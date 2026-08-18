@@ -1,0 +1,7 @@
+From: Meezan Bank <alerts@meezanbank.com>
+To: budget@example.com
+Subject: Transaction Alert
+Message-ID: <meezan-DEMO0001@example.com>
+Content-Type: text/plain; charset=UTF-8
+
+Dear Customer, PKR 1,234.56 has been received from DEMO SENDER into your account xxx0001 on 15-Jan-2026 at 09:30. Branch: DEMO BRANCH. Counterparty account xxx0002. TID: DEMO0001.

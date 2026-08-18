@@ -1,0 +1,38 @@
+name = "budget-mail-worker"
+main = "src/index.ts"
+compatibility_date = "2026-07-14"
+compatibility_flags = ["nodejs_compat"]
+
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[vars]
+BUDGET_AUTH_MODE = "basic"
+GEMINI_MODEL = "gemini-2.5-flash"
+ENABLE_GEMINI_FALLBACK = "false"
+ALLOW_DEFAULT_ACCOUNT = "false"
+CONFIDENCE_THRESHOLD = "0.75"
+DEDUPE_WINDOW_DAYS = "3"
+MAX_RETRY_ATTEMPTS = "5"
+RAW_EMAIL_RETENTION_DAYS = "30"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "budget-email-ingestion"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
+
+[[queues.producers]]
+binding = "INGESTION_QUEUE"
+queue = "budget-email-ingestion"
+
+[[queues.consumers]]
+queue = "budget-email-ingestion"
+max_batch_size = 5
+max_batch_timeout = 30
+max_retries = 1
+dead_letter_queue = "budget-email-ingestion-dlq"
+
+[triggers]
+crons = ["*/15 * * * *"]

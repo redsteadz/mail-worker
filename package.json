@@ -1,0 +1,30 @@
+{
+  "name": "budget-email-ingestion-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "d1:migrate:remote": "wrangler d1 migrations apply DB --remote",
+    "mock:ingest": "vitest run test/mockEmailIngestion.test.ts",
+    "mock:send": "vitest run test/mockBudgetTransaction.test.ts",
+    "send:transaction": "tsx scripts/sendTransaction.ts",
+    "send:demo-email": "tsx scripts/sendDemoEmail.ts",
+    "typecheck": "tsc --noEmit",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "cf-typegen": "wrangler types"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260818.1",
+    "@types/node": "26.1.1",
+    "tsx": "4.23.1",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10",
+    "wrangler": "4.123.0"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT"
+}
