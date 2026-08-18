@@ -35,7 +35,7 @@ The worker currently supports selected Meezan Bank credit and debit alerts. Know
 ## Setup
 
 ~~~bash
-git clone https://github.com/redsteadz/budget-mail-worker.git
+git clone https://github.com/redsteadz/mail-worker.git
 cd budget-mail-worker
 npm install
 cp wrangler.toml.example wrangler.toml
