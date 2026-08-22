@@ -5,6 +5,7 @@ const parseTransactionFromRawEmail = vi.fn();
 const mapAccountId = vi.fn();
 const cacheTransaction = vi.fn();
 const updateRawStatus = vi.fn();
+const insertFailure = vi.fn();
 const createTransactionWithDedupe = vi.fn();
 
 vi.mock("../src/parse", () => ({ parseTransactionFromRawEmail }));
@@ -15,6 +16,7 @@ vi.mock("../src/idempotency/store", async () => {
   return {
     ...actual,
     cacheTransaction,
+    insertFailure,
     updateRawStatus,
     getRawMessage: vi.fn()
   };
@@ -112,5 +114,38 @@ describe("processRawMessage cached transaction reuse", () => {
       accountId: 42,
       transaction
     }));
+  });
+
+  it("records when Gemini fallback is disabled", async () => {
+    vi.mocked(getRawMessage).mockResolvedValue(baseRow({}));
+    parseTransactionFromRawEmail.mockResolvedValue({ parsed: null });
+
+    await processRawMessage(baseEnv(), "raw_1");
+
+    const detail = "No deterministic parser matched; Gemini fallback is disabled";
+    expect(updateRawStatus).toHaveBeenLastCalledWith(expect.anything(), "raw_1", "manual_review", detail);
+    expect(insertFailure).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ detail }));
+  });
+
+  it("records when Gemini fallback has no API key", async () => {
+    vi.mocked(getRawMessage).mockResolvedValue(baseRow({}));
+    parseTransactionFromRawEmail.mockResolvedValue({ parsed: null });
+
+    await processRawMessage({ ...baseEnv(), ENABLE_GEMINI_FALLBACK: "true" }, "raw_1");
+
+    const detail = "No deterministic parser matched; GEMINI_API_KEY is not configured";
+    expect(updateRawStatus).toHaveBeenLastCalledWith(expect.anything(), "raw_1", "manual_review", detail);
+    expect(insertFailure).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ detail }));
+  });
+
+  it("records when Gemini returns no valid transaction", async () => {
+    vi.mocked(getRawMessage).mockResolvedValue(baseRow({}));
+    parseTransactionFromRawEmail.mockResolvedValue({ parsed: null });
+
+    await processRawMessage({ ...baseEnv(), ENABLE_GEMINI_FALLBACK: "true", GEMINI_API_KEY: "test-key" }, "raw_1");
+
+    const detail = "No deterministic parser matched; Gemini returned no valid transaction";
+    expect(updateRawStatus).toHaveBeenLastCalledWith(expect.anything(), "raw_1", "manual_review", detail);
+    expect(insertFailure).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ detail }));
   });
 });

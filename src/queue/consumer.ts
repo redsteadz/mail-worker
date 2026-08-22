@@ -29,8 +29,13 @@ export async function processRawMessage(env: Env, rawMessageId: string): Promise
       ...(env.GEMINI_MODEL ? { geminiModel: env.GEMINI_MODEL } : {})
     });
     if (!parsed) {
-      await updateRawStatus(env.DB, rawMessageId, "manual_review", "No supported transaction parser matched");
-      await insertFailure(env.DB, { rawMessageId, importId: null, reason: "unsupported_email", detail: "No supported transaction parser matched", retryable: false });
+      const detail = !config.enableGeminiFallback
+        ? "No deterministic parser matched; Gemini fallback is disabled"
+        : env.GEMINI_API_KEY
+          ? "No deterministic parser matched; Gemini returned no valid transaction"
+          : "No deterministic parser matched; GEMINI_API_KEY is not configured";
+      await updateRawStatus(env.DB, rawMessageId, "manual_review", detail);
+      await insertFailure(env.DB, { rawMessageId, importId: null, reason: "unsupported_email", detail, retryable: false });
       return;
     }
 
