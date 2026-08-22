@@ -39,6 +39,20 @@ interface ParsedFields {
 
 const TEMPLATES: TemplateRule[] = [
   {
+    name: "meezan-international-ecommerce",
+    type: "debit",
+    subjectMatch: /international\s+e-?commerce\s+transaction\s+alert/i,
+    bodyMustMatch: [/Merchant Name\/Country/i, /Total PKR Amount/i],
+    fields: {
+      amount: /Total PKR Amount\s*:\s*PKR\s*([0-9,]+(?:\.\d{1,2})?)/i,
+      vendor: /Merchant Name\/Country\s*:\s*(.+?)(?:\s+Original Transaction Amount\s*:|$)/i,
+      accountHint: /Customer Ac\s*:\s*((?:x{2,}|\*{2,})?\d{4,24})/i,
+      date: /Transaction Date Time\s*:\s*(\d{1,2}[-\s][A-Za-z]{3}[-\s]\d{4})/i,
+      time: /Transaction Date Time\s*:\s*\d{1,2}[-\s][A-Za-z]{3}[-\s]\d{4}\s+(\d{1,2}:\d{2})(?::\d{2})?/i
+    },
+    required: ["amount", "vendor", "date", "time", "accountHint"]
+  },
+  {
     name: "meezan-raast-debit",
     type: "debit",
     subjectMatch: /raast\s+debit\s+transaction\s+alert/i,
@@ -149,7 +163,7 @@ function extractFields(template: TemplateRule, compact: string): ParsedFields {
     const match = pattern.exec(compact);
     const value = match?.[1];
     if (!value) continue;
-    fields[name] = name === "vendor" ? cleanName(value) : cleanField(value);
+    fields[name] = name === "vendor" ? cleanName(value) : name === "accountHint" ? normalizeAccountHint(value) : cleanField(value);
   }
   return fields;
 }
@@ -181,6 +195,13 @@ function cleanName(input: string): string {
 
 function cleanField(input: string): string {
   return input.replace(/\s+/g, " ").replace(/[.,;:]+$/, "").trim();
+}
+
+export function normalizeAccountHint(input: string): string {
+  const value = cleanField(input).replace(/[\s-]/g, "");
+  if (/^x{2,}\d{2,6}$/i.test(value)) return value.toLowerCase();
+  if (/^\*{2,}\d{2,6}$/.test(value) || /^\d{6,24}$/.test(value)) return `xxx${value.slice(-4)}`;
+  return value;
 }
 
 export function buildFallbackReference(input: { amountRaw: string; compact: string; vendor: string; accountHint: string; date: string; time?: string }): string {
