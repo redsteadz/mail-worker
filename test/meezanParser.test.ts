@@ -66,6 +66,30 @@ Transaction Date : 19-Jan-2026
 
 Transaction Time : 17:25`;
 
+const internationalEcommerceRaw = `From: Meezan Bank Alert <no-reply@meezanbank.com>
+To: budget@example.com
+Subject: International E-Commerce Transaction Alert
+Message-ID: <international-ecommerce@example.com>
+Content-Type: text/html; charset=Cp1252
+Content-Transfer-Encoding: quoted-printable
+
+<html><body>
+<p>Dear Customer,</p>
+<p>Your Internatio=
+nal e-commerce transaction details are as follows.</p>
+<p>Customer Ac: 0000000001</p>
+<p>Transaction Date Time: 20-Aug-2026 22:14</p>
+<p>Merchant Name/Country: EXAMPLE* SERVICE>DEMO CITY US</p>
+<p>Original Transaction Amount: USD 20.00</p>
+<p>Amount in US Dollar: USD 20.00</p>
+<p>Currency Conversion: RATE USD TO PKR 278.85</p>
+<p>PKR Amount: PKR 5,577.00</p>
+<p>Charges: International Transaction Fee PKR 223.08</p>
+<p>Advance Tax: PKR 55.77</p>
+<p>Total PKR Amount: PKR 5=
+,889.31</p>
+</body></html>`;
+
 describe("Meezan parser", () => {
   it("parses credit transaction email", async () => {
     const { parsed } = await parseTransactionFromRawEmail(raw);
@@ -127,6 +151,23 @@ describe("Meezan parser", () => {
     expect(parsed?.vendor).not.toBe("CONTACT US");
     expect(parsed?.reference).toMatch(/^NOREF-/);
     expect(parsed?.confidence).toBeGreaterThanOrEqual(0.9);
+  });
+
+  it("parses international e-commerce total with a masked account hint", async () => {
+    const { parsed } = await parseTransactionFromRawEmail(internationalEcommerceRaw);
+
+    expect(parsed).toMatchObject({
+      description: "Paid to EXAMPLE* SERVICE>DEMO CITY US",
+      vendor: "EXAMPLE* SERVICE>DEMO CITY US",
+      amount: "5889.31",
+      currency: "PKR",
+      type: "debit",
+      date: "2026-08-20",
+      time: "22:14",
+      accountHint: "xxx0001"
+    });
+    expect(parsed?.reference).toMatch(/^NOREF-/);
+    expect(parsed?.confidence).toBeGreaterThanOrEqual(0.85);
   });
 
   it("uses Gemini structured extraction for an unrecognized 1BILL debit", async () => {
@@ -220,5 +261,32 @@ Paid PKR 500 for lunch.`, {
     });
 
     expect(parsed).toBeNull();
+  });
+
+  it("masks a full account number returned by Gemini", async () => {
+    const mockFetch = vi.fn(async () => new Response(JSON.stringify({
+      candidates: [{
+        content: {
+          parts: [{ text: JSON.stringify({
+            isTransaction: true,
+            amount: "8,300.00",
+            currency: "PKR",
+            type: "debit",
+            date: "2026-01-19",
+            time: "17:25",
+            vendor: "1BILL INVOICES 10000000000000000000",
+            accountHint: "0000000001",
+            confidence: 0.94
+          }) }]
+        }
+      }]
+    }), { status: 200 })) as unknown as typeof fetch;
+
+    const { parsed } = await parseTransactionFromRawEmail(oneBillDebitRaw, {
+      geminiApiKey: "test-key",
+      fetch: mockFetch
+    });
+
+    expect(parsed?.accountHint).toBe("xxx0001");
   });
 });
